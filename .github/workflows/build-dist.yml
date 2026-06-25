@@ -1,0 +1,38 @@
+name: Build dist
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: |
+          pnpm --filter stoat.js build
+          pnpm --filter solid-livekit-components build
+          pnpm --filter @lingui-solid/babel-plugin-lingui-macro build
+          pnpm --filter @lingui-solid/babel-plugin-extract-messages build
+          pnpm --filter client exec lingui compile --typescript
+          pnpm --filter client exec node scripts/copyAssets.mjs
+          pnpm --filter client exec panda codegen
+          pnpm --filter client exec vite build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: packages/client/dist
